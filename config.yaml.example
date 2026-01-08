@@ -1,0 +1,70 @@
+# config.yaml.example
+# 复制此文件为 config.yaml 并填入实际的配置信息
+
+# --- 认证信息 ---
+# 只需要 SwanLab API Key，因为最终只上传到 SwanLab
+# WandB 的数据导出会使用本地已登录的凭证
+auth:
+  swanlab_api_key: "YOUR_SWANLAB_API_KEY"
+
+# --- 对齐指标定义 ---
+# 这是所有框架最终都要对齐到的统一指标名称
+# 所有框架的数据都会映射到这些统一的指标名称
+aligned_metrics:
+  - "algorithm/reward"
+  - "algorithm/entropy"
+  - "algorithm/policy_loss"
+  - "algorithm/kl_loss"
+  - "algorithm/clip_ratio"
+  - "algorithm/response_length"
+  - "algorithm/grad_norm"
+  - "infra/ref_logp_time"
+  - "infra/logp_time"
+  - "infra/backward_step_time"
+  - "infra/rollout_step_time"
+  - "infra/sync_weight_time"
+  - "infra/step_time"
+  - "infra/throughput"
+
+# --- 框架配置 ---
+# 每个框架都有自己的数据源和映射规则
+frameworks:
+  # 框架1: VERL (使用 SwanLab)
+  verl:
+    enabled: true
+    platform: "swanlab"
+    exp_id: "YOUR_VERL_EXP_ID"  # SwanLab 实验ID（从网页URL获取）
+    output_file: "data/verl.csv"
+    target_exp_name: "verl_experiment"
+    # 映射规则: VERL的指标名 -> 对齐指标名
+    mapping:
+      "deepinsight_algorithm/reward": "algorithm/reward"
+      "deepinsight_algorithm/entropy": "algorithm/entropy"
+      # ... 其他映射
+
+  # 框架2: ROLL (使用 SwanLab)
+  roll:
+    enabled: true
+    platform: "swanlab"
+    exp_id: "YOUR_ROLL_EXP_ID"  # SwanLab 实验ID（从网页URL获取）
+    output_file: "data/roll.csv"
+    target_exp_name: "roll_experiment"
+    # 映射规则: 如果指标名称已经是对齐指标名称，可以设置为 null
+    mapping: null
+
+  # 框架3: SLIME (使用 WandB)
+  slime:
+    enabled: true
+    platform: "wandb"
+    run_path: "entity/project/run_id"  # 例如: paramecium880-xpeng/slime-30B-profile/uktuelfp
+    output_file: "data/slime.csv"
+    target_exp_name: "slime_experiment"
+    # 映射规则: SLIME的指标名 -> 对齐指标名
+    mapping:
+      "algorithm/reward": "algorithm/reward"
+      "train/entropy_loss": "algorithm/entropy"
+      # ... 其他映射
+
+# --- 目标设置 ---
+target:
+  project: "framework-comparison"  # 所有实验汇总到的新项目名
