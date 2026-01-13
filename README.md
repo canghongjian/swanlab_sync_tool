@@ -88,7 +88,7 @@ frameworks:
 **支持的框架**：
 - **VERL**: 使用 SwanLab
 - **ROLL**: 使用 SwanLab
-- **SLIME**: 使用 WandB
+- **SLIME**: 使用 WandB（支持自动计算 throughput 指标）
 
 **映射规则**：
 - 格式：`"框架的指标名": "对齐指标名"`
@@ -194,6 +194,10 @@ frameworks:
   - 系统会自动按 `train/step`、`rollout/step`、`eval/step` 分组处理指标
   - 使用并行获取策略，避免 WandB API 合并时丢失数据
   - 自动创建连续的 step 索引，确保数据完整性
+- **SLIME Throughput 计算**：
+  - 需要在配置中指定 `n_gpus` 参数
+  - 系统会自动计算 `perf/throughput` 指标
+  - 计算公式：`throughput = (actor_train_tok_per_s × actor_train_time) / (step_time × n_gpus)`
 
 ## 项目结构
 
@@ -277,12 +281,18 @@ A: 系统会自动检测并提示缺失的指标，你可以选择：
 5. **合并数据**：以 `train/step` 为主，合并其他组的数据
    - 最终输出包含所有指标的统一 DataFrame
 
+6. **SLIME Throughput 计算**：针对 SLIME 框架自动计算 throughput 指标
+   - 仅在配置中指定 `n_gpus` 参数且包含必要列时计算
+   - 计算公式：`throughput = (actor_train_tok_per_s × actor_train_time) / (step_time × n_gpus)`
+   - 需要的列：`perf/actor_train_tok_per_s`、`perf/actor_train_time`、`perf/step_time`
+
 ### 输出格式
 
 导出的 WandB 数据包含以下列：
 - `step`：统一的 step 列（来自 train/step）
 - `train_id`、`rollout_id`、`eval_id`：各组的 step 标识
 - 所有原始指标列（按组分类）
+- `perf/throughput`：SLIME 框架自动计算的吞吐量指标（仅当配置了 n_gpus 时）
 
 ### 示例输出
 
@@ -297,5 +307,7 @@ A: 系统会自动检测并提示缺失的指标，你可以选择：
 [+] rollout/step 组: 500 行
 [*] 处理 eval/step 组...
 [+] eval/step 组: 13 行
+[*] 计算 throughput 指标 (n_gpus=8)...
+[+] throughput 指标计算完成
 [+] 合并后数据: 500 行
 ```

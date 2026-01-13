@@ -59,6 +59,8 @@ frameworks:
     run_path: "entity/project/run_id"  # 例如: paramecium880-xpeng/slime-30B-profile/uktuelfp
     output_file: "data/slime.csv"
     target_exp_name: "slime_experiment"
+    # GPU 数量，用于计算 throughput 指标
+    n_gpus: 8
     # 映射规则: SLIME的指标名 -> 对齐指标名
     mapping:
       "algorithm/reward": "algorithm/reward"

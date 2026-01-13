@@ -24,7 +24,7 @@ class DataExporter:
 
     def export_swanlab(self, fw_config: Dict[str, Any]) -> Optional[pd.DataFrame]:
         """
-        从 SwanLab 导出实验数据
+        从 SwanLab 导出实验数据，下载所有指标
         
         Args:
             fw_config: 框架配置字典
@@ -44,16 +44,17 @@ class DataExporter:
             # 初始化 API
             api = OpenApi(api_key=self.cfg['auth']['swanlab_api_key'])
             
-            # 获取指标数据
+            # 从映射中提取所有源指标
             mapping = fw_config.get('mapping')
             if mapping:
-                # 从映射中提取源指标
                 source_metrics = list(mapping.keys())
             else:
-                # 没有映射，直接使用对齐指标
+                # 没有映射，使用对齐指标
                 source_metrics = self.cfg['aligned_metrics']
-                print(f"[*] 未配置映射规则，将导出对齐指标")
             
+            print(f"[*] 尝试下载 {len(source_metrics)} 个指标")
+            
+            # 下载所有映射中的指标
             response = api.experiment.get_metrics(
                 exp_id=fw_config['exp_id'],
                 keys=source_metrics
@@ -70,7 +71,7 @@ class DataExporter:
             
             # 保存到本地
             df.to_csv(fw_config['output_file'], index=False)
-            print(f"[+] 导出成功，共 {len(df)} 行数据")
+            print(f"[+] 导出成功，共 {len(df)} 行数据，{len(df.columns)-1} 个指标")
             return df
             
         except Exception as e:
@@ -244,6 +245,23 @@ class DataExporter:
             else:
                 # 如果没有 train/step，使用第一个可用的组
                 df_final = list(result_dfs.values())[0] if result_dfs else pd.DataFrame()
+            
+            # 计算特殊指标：throughput（仅针对 SLIME）
+            if fw_config.get('platform') == 'wandb' and 'n_gpus' in fw_config:
+                n_gpus = fw_config['n_gpus']
+                required_cols = ['perf/actor_train_tok_per_s', 'perf/actor_train_time', 'perf/step_time']
+                
+                if all(col in df_final.columns for col in required_cols):
+                    print(f"[*] 计算 throughput 指标 (n_gpus={n_gpus})...")
+                    df_final['perf/throughput'] = (
+                        df_final['perf/actor_train_tok_per_s'] * 
+                        df_final['perf/actor_train_time'] / 
+                        (df_final['perf/step_time'] * n_gpus)
+                    )
+                    print(f"[+] throughput 指标计算完成")
+                else:
+                    missing_cols = [col for col in required_cols if col not in df_final.columns]
+                    print(f"[!] 警告: 无法计算 throughput，缺少列: {missing_cols}")
             
             # 保存到本地
             df_final.to_csv(fw_config['output_file'], index=False)
